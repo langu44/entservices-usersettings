@@ -24,6 +24,8 @@ find_package(${NAMESPACE}Plugins REQUIRED)
 
 if(PLUGIN_USERSETTINGS)
     set(SRC_FILES ${SRC_FILES} tests/UserSettings_L2Test.cpp)
+    set(SRC_FILES ${SRC_FILES} tests/UserSettingsImpl_L2Test.cpp)
+    set(SRC_FILES ${SRC_FILES} ../../plugin/UserSettingsImpl.cpp)
 endif()
 
 add_library(${MODULE_NAME} SHARED ${SRC_FILES})
@@ -60,6 +62,7 @@ endif (MOCKACCESSOR_LIBRARIES)
 
 target_include_directories(
     ${MODULE_NAME} PRIVATE ./
+    ../../plugin
     ../../helpers
     ../../../entservices-testframework/Tests/mocks
     ../../../entservices-testframework/Tests/mocks/thunder
