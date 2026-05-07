@@ -137,9 +137,9 @@ jobs:
             echo "issue_number=" >> "$GITHUB_OUTPUT"
           fi
 
-        - name: Build issue body
+      - name: Build issue body
         if: steps.evaluate.outputs.needs_agent == 'true' && steps.dedupe.outputs.duplicate != 'true'
-          id: build_issue
+        id: build_issue
         env:
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -149,13 +149,13 @@ jobs:
           set -euo pipefail
 
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
-          title="[L2-Guardian] Generate missing L2 tests for PR #$PR_NUMBER"
-          subject="PR #$PR_NUMBER"
-          subject_details=$'PR title: '"$PR_TITLE"$'\nHead SHA: '"$PR_HEAD_SHA"
+            title="[L2-Guardian] Generate missing L2 tests for PR #$PR_NUMBER"
+            subject="PR #$PR_NUMBER"
+            subject_details=$'PR title: '"$PR_TITLE"$'\nHead SHA: '"$PR_HEAD_SHA"
           else
-          title="[L2-Guardian] Daily scan detected source changes without L2 test updates"
-          subject="daily scan"
-          subject_details="Scope: commits on default branch in the last week"
+            title="[L2-Guardian] Daily scan detected source changes without L2 test updates"
+            subject="daily scan"
+            subject_details="Scope: commits on default branch in the last week"
           fi
 
           body_file="$(mktemp)"
