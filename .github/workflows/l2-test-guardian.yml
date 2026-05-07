@@ -1,0 +1,229 @@
+name: l2-test-guardian
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  evaluate-and-enqueue:
+    name: Detect missing L2 tests and enqueue Copilot
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name != 'pull_request' ||
+      (github.actor != 'dependabot[bot]' &&
+       github.actor != 'copilot[bot]' &&
+       !contains(github.event.pull_request.user.login, 'copilot') &&
+       !startsWith(github.event.pull_request.title, 'L2: '))
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Evaluate change set
+        id: evaluate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          # Prevent self-trigger loops on Copilot-generated L2 maintenance PRs.
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            if [[ "$PR_TITLE" =~ ^L2: ]] || [[ "${PR_AUTHOR,,}" == *"copilot"* ]]; then
+              echo "needs_agent=false" >> "$GITHUB_OUTPUT"
+              echo "reason=Skipped automation PR to avoid recursive agent loop (author=$PR_AUTHOR, title=$PR_TITLE)" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          tmp_files="$(mktemp)"
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' > "$tmp_files"
+            scope_label="PR #$PR_NUMBER"
+          else
+            git fetch origin "$DEFAULT_BRANCH" --depth=200
+            git log --since='1 week ago' --name-only --pretty=format: "origin/$DEFAULT_BRANCH" \
+              | sed '/^$/d' \
+              | sort -u > "$tmp_files"
+            scope_label="default branch commits in last week"
+          fi
+
+          total_changed="$(wc -l < "$tmp_files" | tr -d ' ')"
+          if [[ "$total_changed" -eq 0 ]]; then
+            echo "needs_agent=false" >> "$GITHUB_OUTPUT"
+            echo "reason=No file changes detected for evaluation scope" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          source_regex='\.(c|cc|cpp|cxx|h|hh|hpp)$'
+          ignored_regex='(^|/)Tests/|(^|/)docs?/|(^|/)\.github/|(^|/)cmake/'
+          l2_regex='(^|/)Tests/L2Tests/|(^|/)L2[-_].*tests?\.(c|cc|cpp|cxx|h|hh|hpp)$|(^|/)tests?/.*l2.*\.(c|cc|cpp|cxx|h|hh|hpp)$'
+
+          src_changed=false
+          l2_changed=false
+
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+
+            if [[ "$file" =~ $source_regex ]] && [[ ! "$file" =~ $ignored_regex ]]; then
+              src_changed=true
+            fi
+
+            if [[ "$file" =~ $l2_regex ]]; then
+              l2_changed=true
+            fi
+          done < "$tmp_files"
+
+          if [[ "$src_changed" == "true" && "$l2_changed" == "false" ]]; then
+            echo "needs_agent=true" >> "$GITHUB_OUTPUT"
+            echo "reason=Source changes without L2 test updates in $scope_label" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_agent=false" >> "$GITHUB_OUTPUT"
+            echo "reason=No missing-L2 signal in $scope_label (src_changed=$src_changed, l2_changed=$l2_changed)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Show decision
+        run: |
+          echo "needs_agent=${{ steps.evaluate.outputs.needs_agent }}"
+          echo "reason=${{ steps.evaluate.outputs.reason }}"
+
+      - name: Find duplicate open issue
+        if: steps.evaluate.outputs.needs_agent == 'true'
+        id: dedupe
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            key="PR #$PR_NUMBER"
+          else
+            key="daily scan"
+          fi
+
+          existing="$(gh issue list \
+            --repo "$REPO" \
+            --state open \
+            --search "[L2-Guardian] in:title $key" \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          if [[ -n "$existing" ]]; then
+            echo "duplicate=true" >> "$GITHUB_OUTPUT"
+            echo "issue_number=$existing" >> "$GITHUB_OUTPUT"
+          else
+            echo "duplicate=false" >> "$GITHUB_OUTPUT"
+            echo "issue_number=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build issue body
+        if: steps.evaluate.outputs.needs_agent == 'true' && steps.dedupe.outputs.duplicate != 'true'
+        id: build_issue
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            title="[L2-Guardian] Generate missing L2 tests for PR #$PR_NUMBER"
+            subject="PR #$PR_NUMBER"
+            subject_details=$'PR title: '"$PR_TITLE"$'\nHead SHA: '"$PR_HEAD_SHA"
+          else
+            title="[L2-Guardian] Daily scan detected source changes without L2 test updates"
+            subject="daily scan"
+            subject_details="Scope: commits on default branch in the last week"
+          fi
+
+          body_file="$(mktemp)"
+          cat > "$body_file" <<EOF
+          @copilot
+
+          /agent l2-test-guardian
+
+          Please run the l2-test-guardian workflow for ${subject}.
+
+          ${subject_details}
+
+          Required behavior:
+          1. Analyze changed source files and existing L2 tests in this repository.
+          2. If L2 tests are already sufficient, comment findings and stop.
+          3. If L2 tests are missing, generate/update tests directly from repository source and existing test patterns.
+          4. When opening the PR, include this exact line in the PR body: \
+           L2-Guardian-Issue: #<this_issue_number>
+          5. Report initial CI status and document any issues found.
+          6. Keep production-code changes minimal and justified.
+          EOF
+
+          echo "title=$title" >> "$GITHUB_OUTPUT"
+          echo "body_file=$body_file" >> "$GITHUB_OUTPUT"
+
+      - name: Open Copilot issue to run custom agent
+        if: steps.evaluate.outputs.needs_agent == 'true' && steps.dedupe.outputs.duplicate != 'true'
+        id: open_issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          issue_url="$(gh issue create \
+            --repo "$REPO" \
+            --title "${{ steps.build_issue.outputs.title }}" \
+            --body-file "${{ steps.build_issue.outputs.body_file }}")"
+
+          echo "Created issue: $issue_url"
+          echo "issue_url=$issue_url" >> "$GITHUB_OUTPUT"
+          
+      - name: Assign issue to Copilot agent
+        if: steps.evaluate.outputs.needs_agent == 'true' && steps.dedupe.outputs.duplicate != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_PAT }}
+          REPO: ${{ github.repository }}
+          ISSUE_URL: ${{ steps.open_issue.outputs.issue_url }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "COPILOT_PAT is empty. Add repo secret COPILOT_PAT with a PAT from a user who can assign Copilot agents."
+            exit 1
+          fi
+          
+          # Auto-assign to copilot using REST API with custom agent
+          issue_number="${ISSUE_URL##*/}"
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/$REPO/issues/$issue_number/assignees" \
+            --input - <<< "{
+              \"assignees\": [\"copilot-swe-agent[bot]\"],
+              \"agent_assignment\": {
+                \"custom_agent\": \"l2-test-guardian\"
+              }
+            }"
+
+          echo "Assigned issue #$issue_number to Copilot with custom agent l2-test-guardian"
+
+      - name: Skip because issue already exists
+        if: steps.evaluate.outputs.needs_agent == 'true' && steps.dedupe.outputs.duplicate == 'true'
+        run: |
+          echo "Skipped creating a new issue; existing issue #${{ steps.dedupe.outputs.issue_number }} is already open."
