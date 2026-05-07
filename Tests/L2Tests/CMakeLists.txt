@@ -70,3 +70,35 @@ target_include_directories(
     )
 
 install(TARGETS ${MODULE_NAME} DESTINATION lib)
+
+if(PLUGIN_USERSETTINGS)
+    # Separate target for UserSettingsImpl L2 tests.
+    # This target uses plugin/IUserSettings.h (the local interface) which defines
+    # Exchange::IUserSettings differently from <interfaces/IUserSettings.h>.
+    # A separate build target is required to avoid ODR violations.
+    set(IMPL_MODULE_NAME ${NAMESPACE}L2TestsUserSettingsImpl)
+
+    add_library(${IMPL_MODULE_NAME} SHARED
+        tests/UserSettingsImpl_L2Test.cpp)
+
+    set_target_properties(${IMPL_MODULE_NAME} PROPERTIES
+        CXX_STANDARD 14
+        CXX_STANDARD_REQUIRED YES)
+
+    target_compile_definitions(${IMPL_MODULE_NAME}
+        PRIVATE
+        MODULE_NAME=Plugin_L2TestsUserSettingsImpl
+        THUNDER_PORT="${THUNDER_PORT}")
+
+    target_compile_options(${IMPL_MODULE_NAME} PRIVATE -Wno-error)
+
+    target_include_directories(${IMPL_MODULE_NAME} PRIVATE
+        ./
+        ../../plugin
+        ${CMAKE_INSTALL_PREFIX}/include)
+
+    target_link_libraries(${IMPL_MODULE_NAME} PRIVATE
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
+
+    install(TARGETS ${IMPL_MODULE_NAME} DESTINATION lib)
+endif()
