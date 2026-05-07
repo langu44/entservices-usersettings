@@ -19,20 +19,27 @@
 
 #include <gtest/gtest.h>
 
-// Include the implementation directly to access the internal class.
-// The compiler's include path contains ../../plugin so that when
-// UserSettingsImpl.cpp does #include "IUserSettings.h" it resolves to
-// plugin/IUserSettings.h and avoids an ODR conflict with
-// <interfaces/IUserSettings.h> used by UserSettings_L2Test.cpp.
-#include "../../plugin/UserSettingsImpl.cpp"
+// Including UserSettingsImpl.cpp directly is intentional in this translation unit.
+// plugin/IUserSettings.h defines Exchange::IUserSettings with a different method set
+// than the system-wide <interfaces/IUserSettings.h>, causing an ODR violation when
+// both headers are included in the same binary. By placing this test in a separate
+// build target (see CMakeLists.txt) with ../../plugin on the include path, we ensure
+// that #include "IUserSettings.h" inside UserSettingsImpl.cpp resolves to the local
+// header rather than the system one. This avoids the ODR conflict and allows direct
+// unit testing of UserSettingsImpl without the Thunder COM-RPC infrastructure.
+#include "../../plugin/UserSettingsImpl.cpp" // NOLINT(build/include)
 
 namespace {
 
-// Concrete subclass for testing - provides Core::IUnknown stubs
+// ConcreteUserSettingsImpl provides minimal IUnknown stubs required to
+// instantiate the otherwise-abstract UserSettingsImpl in unit tests.
+// Reference counting is intentionally disabled (returning 1) because these
+// objects have stack/heap lifetimes managed directly by the test fixture and
+// do not participate in COM-RPC reference counting.
 class ConcreteUserSettingsImpl : public WPEFramework::Plugin::UserSettingsImpl {
 public:
-    uint32_t AddRef() const override { return 1; }
-    uint32_t Release() const override { return 1; }
+    uint32_t AddRef() const override { return 1; } // stub: test manages lifetime directly
+    uint32_t Release() const override { return 1; } // stub: test manages lifetime directly
     void* QueryInterface(const uint32_t /*id*/) override { return nullptr; }
 };
 
@@ -53,6 +60,7 @@ public:
         lastResolution = resolution;
     }
 
+    // IUnknown stubs: test manages lifetime directly, no COM-RPC refcounting needed.
     uint32_t AddRef() const override { return 1; }
     uint32_t Release() const override { return 1; }
     void* QueryInterface(const uint32_t /*id*/) override { return nullptr; }

@@ -90,7 +90,10 @@ if(PLUGIN_USERSETTINGS)
         MODULE_NAME=Plugin_L2TestsUserSettingsImpl
         THUNDER_PORT="${THUNDER_PORT}")
 
-    target_compile_options(${IMPL_MODULE_NAME} PRIVATE -Wno-error)
+    # Suppress warnings that fire specifically because we #include a .cpp file directly.
+    # This is intentional (see UserSettingsImpl_L2Test.cpp for rationale) and scoped
+    # to this test target only.
+    target_compile_options(${IMPL_MODULE_NAME} PRIVATE -Wno-non-virtual-dtor)
 
     target_include_directories(${IMPL_MODULE_NAME} PRIVATE
         ./
