@@ -1,11 +1,6 @@
 name: l2-test-guardian
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches: [main, develop, 'sprint/**', 'release/**']
-  schedule:
-    - cron: '0 21 * * 0'
   workflow_dispatch:
 
 permissions:
@@ -174,9 +169,8 @@ jobs:
           3. If L2 tests are missing, generate/update tests directly from repository source and existing test patterns.
           4. When opening the PR, include this exact line in the PR body: \
            L2-Guardian-Issue: #<this_issue_number>
-          5. When you have finished generating all tests and pushed the final commit to the PR, request a review to trigger Valgrind CI.
-          6. Report initial CI status and document any issues found.
-          7. Keep production-code changes minimal and justified.
+          5. Report initial CI status and document any issues found.
+          6. Keep production-code changes minimal and justified.
           EOF
 
           echo "title=$title" >> "$GITHUB_OUTPUT"
@@ -198,25 +192,6 @@ jobs:
 
           echo "Created issue: $issue_url"
           echo "issue_url=$issue_url" >> "$GITHUB_OUTPUT"
-
-      - name: Add PR linkage instructions for agent
-        if: steps.evaluate.outputs.needs_agent == 'true' && steps.dedupe.outputs.duplicate != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          ISSUE_URL: ${{ steps.open_issue.outputs.issue_url }}
-        run: |
-          set -euo pipefail
-
-          issue_number="${ISSUE_URL##*/}"
-
-          comment_body="$(printf '@copilot One requirement when opening the L2 test PR:\nInclude this exact line in the PR body: L2-Guardian-Issue: #%s\n\nWhen done generating tests and you request a review, the Valgrind CI workflow will automatically run.' "$issue_number")"
-
-          gh issue comment "$issue_number" \
-            --repo "$REPO" \
-            --body "$comment_body"
-
-          echo "Posted PR linkage instruction on issue #$issue_number"
           
       - name: Assign issue to Copilot agent
         if: steps.evaluate.outputs.needs_agent == 'true' && steps.dedupe.outputs.duplicate != 'true'
