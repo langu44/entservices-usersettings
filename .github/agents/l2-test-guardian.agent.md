@@ -63,22 +63,21 @@ Enforce L2 test coverage for C++ plugin changes. When a PR modifies plugin sourc
 
 ### Phase 4: Commit and Update Copilot-Assigned PR
 
-1. Resolve the target PR branch from the guardian issue linkage:
-   - Determine the current guardian issue number as `ISSUE_NUMBER`.
-   - Find the open PR in this repository whose body contains `L2-Guardian-Issue: #$ISSUE_NUMBER`.
-   - Store its head branch name as `TARGET_PR_BRANCH` and its URL as `TARGET_PR_URL`.
-   - If no linked PR is found, stop and report that no Copilot-assigned PR branch is available yet.
-2. Use `TARGET_PR_BRANCH` as the canonical branch:
-   - Fetch and switch to `TARGET_PR_BRANCH` before committing.
+1. Identify the intended PR branch from the active assignment context and repository state:
+   - Prefer the PR branch already associated with this Copilot-assigned issue.
+   - If the branch is already checked out and tracking the intended PR, continue on it.
+   - Otherwise, resolve the intended PR in this repository, then fetch/switch to its head branch.
+2. Use the resolved PR branch as the canonical branch:
+   - Store it as `TARGET_PR_BRANCH` and the PR URL as `TARGET_PR_URL` when available.
    - All generated test changes and any minimal seams must be committed to `TARGET_PR_BRANCH`.
 3. Commit generated tests and any minimal seams on `TARGET_PR_BRANCH`:
    - Commit 1: "feat: add L2 tests for [components/methods]"
    - Commit 2: "refactor: test seams for [components]" (if applicable)
-4. Push commits to the same repository branch backing that linked PR:
+4. Push commits to the same repository branch backing that PR:
    - `git push origin "$TARGET_PR_BRANCH"`
 5. Do **not** push changes to the workflow-trigger branch unless it is the same as `TARGET_PR_BRANCH`.
 6. Do **not** create an additional PR, cross-fork PR, or upstream PR.
-7. Use the linked Copilot-assigned PR as the single review/CI surface for all generated test updates.
+7. Use that Copilot-assigned PR as the single review/CI surface for all generated test updates.
 
 ### Phase 5: Report Status
 
