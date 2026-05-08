@@ -30,6 +30,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
+          CURRENT_REF: ${{ github.ref_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
@@ -52,12 +53,18 @@ jobs:
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' > "$tmp_files"
             scope_label="PR #$PR_NUMBER"
-          else
+          elif [[ "$EVENT_NAME" == "schedule" ]]; then
             git fetch origin "$DEFAULT_BRANCH" --depth=200
             git log --since='1 week ago' --name-only --pretty=format: "origin/$DEFAULT_BRANCH" \
               | sed '/^$/d' \
               | sort -u > "$tmp_files"
             scope_label="default branch commits in last week"
+          else
+            git fetch origin "$DEFAULT_BRANCH" --depth=200
+            git diff --name-only "origin/$DEFAULT_BRANCH...HEAD" \
+              | sed '/^$/d' \
+              | sort -u > "$tmp_files"
+            scope_label="branch '$CURRENT_REF' compared to default branch '$DEFAULT_BRANCH'"
           fi
 
           total_changed="$(wc -l < "$tmp_files" | tr -d ' ')"
@@ -106,6 +113,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
+          CURRENT_REF: ${{ github.ref_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -113,8 +121,10 @@ jobs:
 
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             key="PR #$PR_NUMBER"
-          else
+          elif [[ "$EVENT_NAME" == "schedule" ]]; then
             key="daily scan"
+          else
+            key="branch $CURRENT_REF"
           fi
 
           existing="$(gh issue list \
@@ -137,6 +147,7 @@ jobs:
         id: build_issue
         env:
           EVENT_NAME: ${{ github.event_name }}
+          CURRENT_REF: ${{ github.ref_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -147,10 +158,14 @@ jobs:
             title="[L2-Guardian] Generate missing L2 tests for PR #$PR_NUMBER"
             subject="PR #$PR_NUMBER"
             subject_details=$'PR title: '"$PR_TITLE"$'\nHead SHA: '"$PR_HEAD_SHA"
-          else
+          elif [[ "$EVENT_NAME" == "schedule" ]]; then
             title="[L2-Guardian] Daily scan detected source changes without L2 test updates"
             subject="daily scan"
             subject_details="Scope: commits on default branch in the last week"
+          else
+            title="[L2-Guardian] Generate missing L2 tests for branch $CURRENT_REF"
+            subject="branch $CURRENT_REF"
+            subject_details="Scope: compare branch '$CURRENT_REF' to default branch '$DEFAULT_BRANCH'"
           fi
 
           body_file="$(mktemp)"
