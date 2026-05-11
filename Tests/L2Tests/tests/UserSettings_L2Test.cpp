@@ -757,7 +757,7 @@ TEST_F(UserSettingTest, getMigrationStatecase)
     string preferredCaptionsLanguages = "en,es";
     string preferredService = "CC3";
     string viewingRestrictions = "ALWAYS";
-    string contentPin = "1234";
+    string contentPin = "123456";
     double rate = 1;
 
     Core::JSON::String result_string;
@@ -2060,7 +2060,7 @@ TEST_F(UserSettingTest, onContentPinChangedEvent)
     uint32_t status = Core::ERROR_GENERAL;
     uint32_t signalled = UserSettings_StateInvalid;
 
-    string contentPin = "1234";
+    string contentPin = "123456";
 
     Core::JSON::String result_string;
     Core::JSON::Boolean result_bool;
@@ -3087,7 +3087,7 @@ TEST_F(UserSettingTest,SetAndGetMethodsUsingComRpcConnectionSuccessCase)
                 }
 
                 TEST_LOG("Setting and Getting ContentPin Values");
-                status = m_usersettingsplugin->SetContentPin("1234");
+                status = m_usersettingsplugin->SetContentPin("123456");
                 EXPECT_EQ(status,Core::ERROR_NONE);
                 if (status != Core::ERROR_NONE)
                 {
@@ -3098,13 +3098,20 @@ TEST_F(UserSettingTest,SetAndGetMethodsUsingComRpcConnectionSuccessCase)
                 EXPECT_TRUE(signalled & UserSettings_onContentPinChanged);
 
                 status = m_usersettingsplugin->GetContentPin(getStringValue);
-                EXPECT_EQ(getStringValue, "1234");
+                EXPECT_EQ(getStringValue, "123456");
                 EXPECT_EQ(status,Core::ERROR_NONE);
                 if (status != Core::ERROR_NONE)
                 {
                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
                     TEST_LOG("Err: %s", errorMsg.c_str());
                 }
+
+                status = m_usersettingsplugin->SetContentPin("1234");
+                EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
+
+                status = m_usersettingsplugin->GetContentPin(getStringValue);
+                EXPECT_EQ(getStringValue, "123456");
+                EXPECT_EQ(status,Core::ERROR_NONE);
 
                 TEST_LOG("Setting and Getting PrivacyMode Values");
                 status = m_usersettingsplugin->SetPrivacyMode("SHARE");
@@ -3604,5 +3611,4 @@ TEST_F(UserSettingTest, PersistentstoreIsNotActivatedWhileUserSettingsActivating
         }
     }
 }
-
 

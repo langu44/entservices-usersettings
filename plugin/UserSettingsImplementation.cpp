@@ -1029,7 +1029,7 @@ Core::hresult UserSettingsImplementation::GetVoiceGuidanceHints(bool &hints) con
 Core::hresult UserSettingsImplementation::SetContentPin(const string& contentPin)
 {
     Core::hresult status = Core::ERROR_GENERAL;
-    std::regex decimalRegex(R"(^\d{4}$)");
+    std::regex decimalRegex(R"(^\d{6}$)");
     bool validPin = std::regex_match(contentPin, decimalRegex);
 
     LOGINFO("contentPin: %s", contentPin.c_str());
