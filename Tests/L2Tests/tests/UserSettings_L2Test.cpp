@@ -2127,6 +2127,7 @@ TEST_F(UserSettingTest, setContentPinInvalidLengthErrorCase)
     std::vector<std::string> invalidPins = {"1234", "12345", "1234567"};
 
     for (const auto& pin : invalidPins) {
+        SCOPED_TRACE("contentPin=" + pin);
         JsonObject paramsContentPin;
         paramsContentPin["contentPin"] = pin;
         status = InvokeServiceMethod("org.rdk.UserSettings", "setContentPin", paramsContentPin, result_json);
