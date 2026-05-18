@@ -2123,7 +2123,7 @@ TEST_F(UserSettingTest, onContentPinChangedEvent)
 TEST_F(UserSettingTest, setContentPinValidatesInputFormatComRpc)
 {
     uint32_t status = Core::ERROR_GENERAL;
-    string contentPin = "";
+    string contentPin;
 
     ASSERT_EQ(CreateUserSettingInterfaceObjectUsingComRPCConnection(), Core::ERROR_NONE);
     ASSERT_TRUE(m_usersettingsplugin != nullptr);
