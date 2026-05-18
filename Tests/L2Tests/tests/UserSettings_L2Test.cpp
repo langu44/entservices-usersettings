@@ -2123,7 +2123,7 @@ TEST_F(UserSettingTest, onContentPinChangedEvent)
 TEST_F(UserSettingTest, setContentPinInvalidLengthErrorCase)
 {
     JsonObject result_json;
-    std::vector<std::string> invalidPins = {"1234", "12345", "1234567"};
+    std::vector<std::string> invalidPins = {"1234", "12345", "1234567", "12a456", "1234567890123"};
 
     for (const auto& pin : invalidPins) {
         SCOPED_TRACE("contentPin=" + pin);
