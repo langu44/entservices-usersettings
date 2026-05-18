@@ -2131,6 +2131,23 @@ TEST_F(UserSettingTest, setContentPinWithFourDigitsReturnsInvalidParameter)
     EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
 }
 
+TEST_F(UserSettingTest, setContentPinWithSixDigitsReturnsSuccessAndPersists)
+{
+    const string contentPin = "654321";
+    uint32_t status = Core::ERROR_GENERAL;
+    JsonObject result_json;
+    JsonObject paramsContentPin;
+    Core::JSON::String result_string;
+
+    paramsContentPin["contentPin"] = contentPin;
+    status = InvokeServiceMethod("org.rdk.UserSettings", "setContentPin", paramsContentPin, result_json);
+    EXPECT_EQ(status, Core::ERROR_NONE);
+
+    status = InvokeServiceMethod("org.rdk.UserSettings", "getContentPin", result_string);
+    EXPECT_EQ(status, Core::ERROR_NONE);
+    EXPECT_EQ(result_string.Value(), contentPin);
+}
+
 /* Activating UserSettings and Persistent store plugins and UserSettings namespace has no entries in db.
    So that we can verify whether UserSettings plugin is receiving default values from PersistentStore or not*/
 TEST_F(UserSettingTest, VerifyDefaultValues)
