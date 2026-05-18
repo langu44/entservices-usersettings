@@ -2124,11 +2124,11 @@ TEST_F(UserSettingTest, setContentPinInvalidLengthErrorCase)
 {
     JsonObject result_json;
     constexpr size_t EXCESSIVE_PIN_LENGTH = 512;
-    std::vector<std::string> pinsWithInvalidLength = {"1234", "12345", "1234567", "1234567890123"};
-    std::vector<std::string> pinsWithInvalidFormat = {"12a456", "ab&def", "12 456", "&%$*12"};
+    std::vector<std::string> invalidLengthPins = {"1234", "12345", "1234567", "1234567890123"};
+    std::vector<std::string> invalidFormatPins = {"12a456", "ab&def", "12 456", "&%$*12"};
     std::string veryLongPin(EXCESSIVE_PIN_LENGTH, '1');
 
-    for (const auto& pin : pinsWithInvalidLength) {
+    for (const auto& pin : invalidLengthPins) {
         SCOPED_TRACE("contentPin=" + pin);
         JsonObject paramsContentPin;
         paramsContentPin["contentPin"] = pin;
@@ -2136,7 +2136,7 @@ TEST_F(UserSettingTest, setContentPinInvalidLengthErrorCase)
         EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
     }
 
-    for (const auto& pin : pinsWithInvalidFormat) {
+    for (const auto& pin : invalidFormatPins) {
         SCOPED_TRACE("contentPin=" + pin);
         JsonObject paramsContentPin;
         paramsContentPin["contentPin"] = pin;
@@ -2144,6 +2144,7 @@ TEST_F(UserSettingTest, setContentPinInvalidLengthErrorCase)
         EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
     }
 
+    SCOPED_TRACE("contentPin=<512-digit numeric>");
     JsonObject longContentPin;
     longContentPin["contentPin"] = veryLongPin;
     EXPECT_EQ(InvokeServiceMethod("org.rdk.UserSettings", "setContentPin", longContentPin, result_json), Core::ERROR_INVALID_PARAMETER);
