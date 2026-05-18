@@ -757,7 +757,7 @@ TEST_F(UserSettingTest, getMigrationStatecase)
     string preferredCaptionsLanguages = "en,es";
     string preferredService = "CC3";
     string viewingRestrictions = "ALWAYS";
-    string contentPin = "1234";
+    string contentPin = "123456";
     double rate = 1;
 
     Core::JSON::String result_string;
@@ -2060,7 +2060,7 @@ TEST_F(UserSettingTest, onContentPinChangedEvent)
     uint32_t status = Core::ERROR_GENERAL;
     uint32_t signalled = UserSettings_StateInvalid;
 
-    string contentPin = "1234";
+    string contentPin = "123456";
 
     Core::JSON::String result_string;
     Core::JSON::Boolean result_bool;
@@ -2118,6 +2118,34 @@ TEST_F(UserSettingTest, onContentPinChangedEvent)
     time(&testcase_exit);
     TEST_LOG("current time stramp at end %ld\n", testcase_exit);
 
+}
+
+TEST_F(UserSettingTest, setContentPinWithFourDigitsReturnsInvalidParameter)
+{
+    uint32_t status = Core::ERROR_GENERAL;
+    JsonObject result_json;
+    JsonObject paramsContentPin;
+
+    paramsContentPin["contentPin"] = "1234";
+    status = InvokeServiceMethod("org.rdk.UserSettings", "setContentPin", paramsContentPin, result_json);
+    EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
+}
+
+TEST_F(UserSettingTest, setContentPinWithSixDigitsReturnsSuccessAndPersists)
+{
+    const string contentPin = "654321";
+    uint32_t status = Core::ERROR_GENERAL;
+    JsonObject result_json;
+    JsonObject paramsContentPin;
+    Core::JSON::String result_string;
+
+    paramsContentPin["contentPin"] = contentPin;
+    status = InvokeServiceMethod("org.rdk.UserSettings", "setContentPin", paramsContentPin, result_json);
+    EXPECT_EQ(status, Core::ERROR_NONE);
+
+    status = InvokeServiceMethod("org.rdk.UserSettings", "getContentPin", result_string);
+    EXPECT_EQ(status, Core::ERROR_NONE);
+    EXPECT_EQ(result_string.Value(), contentPin);
 }
 
 /* Activating UserSettings and Persistent store plugins and UserSettings namespace has no entries in db.
@@ -3087,7 +3115,7 @@ TEST_F(UserSettingTest,SetAndGetMethodsUsingComRpcConnectionSuccessCase)
                 }
 
                 TEST_LOG("Setting and Getting ContentPin Values");
-                status = m_usersettingsplugin->SetContentPin("1234");
+                status = m_usersettingsplugin->SetContentPin("123456");
                 EXPECT_EQ(status,Core::ERROR_NONE);
                 if (status != Core::ERROR_NONE)
                 {
@@ -3098,7 +3126,7 @@ TEST_F(UserSettingTest,SetAndGetMethodsUsingComRpcConnectionSuccessCase)
                 EXPECT_TRUE(signalled & UserSettings_onContentPinChanged);
 
                 status = m_usersettingsplugin->GetContentPin(getStringValue);
-                EXPECT_EQ(getStringValue, "1234");
+                EXPECT_EQ(getStringValue, "123456");
                 EXPECT_EQ(status,Core::ERROR_NONE);
                 if (status != Core::ERROR_NONE)
                 {
@@ -3604,5 +3632,3 @@ TEST_F(UserSettingTest, PersistentstoreIsNotActivatedWhileUserSettingsActivating
         }
     }
 }
-
-
