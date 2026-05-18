@@ -2123,12 +2123,15 @@ TEST_F(UserSettingTest, onContentPinChangedEvent)
 TEST_F(UserSettingTest, setContentPinInvalidLengthErrorCase)
 {
     uint32_t status = Core::ERROR_GENERAL;
-    JsonObject paramsContentPin;
     JsonObject result_json;
+    std::vector<std::string> invalidPins = {"1234", "12345", "1234567"};
 
-    paramsContentPin["contentPin"] = "1234";
-    status = InvokeServiceMethod("org.rdk.UserSettings", "setContentPin", paramsContentPin, result_json);
-    EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
+    for (const auto& pin : invalidPins) {
+        JsonObject paramsContentPin;
+        paramsContentPin["contentPin"] = pin;
+        status = InvokeServiceMethod("org.rdk.UserSettings", "setContentPin", paramsContentPin, result_json);
+        EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
+    }
 }
 
 /* Activating UserSettings and Persistent store plugins and UserSettings namespace has no entries in db.
