@@ -2142,6 +2142,28 @@ TEST_F(UserSettingTest, setContentPinRejectsFourDigitPinComRpc)
     status = m_usersettingsplugin->GetContentPin(contentPin);
     EXPECT_EQ(status, Core::ERROR_NONE);
     EXPECT_EQ(contentPin, "123456");
+
+    status = m_usersettingsplugin->SetContentPin("12345");
+    EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
+
+    status = m_usersettingsplugin->SetContentPin("1234567");
+    EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
+
+    status = m_usersettingsplugin->SetContentPin("12ab56");
+    EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
+
+    contentPin = "";
+    status = m_usersettingsplugin->GetContentPin(contentPin);
+    EXPECT_EQ(status, Core::ERROR_NONE);
+    EXPECT_EQ(contentPin, "123456");
+
+    status = m_usersettingsplugin->SetContentPin("");
+    EXPECT_EQ(status, Core::ERROR_NONE);
+
+    contentPin = "default";
+    status = m_usersettingsplugin->GetContentPin(contentPin);
+    EXPECT_EQ(status, Core::ERROR_NONE);
+    EXPECT_EQ(contentPin, "");
 }
 
 /* Activating UserSettings and Persistent store plugins and UserSettings namespace has no entries in db.
