@@ -2125,31 +2125,23 @@ TEST_F(UserSettingTest, setContentPinRejectsFourDigitPinComRpc)
     uint32_t status = Core::ERROR_GENERAL;
     string contentPin = "";
 
-    if (CreateUserSettingInterfaceObjectUsingComRPCConnection() != Core::ERROR_NONE)
-    {
-        TEST_LOG("Invalid Client_UserSettings");
-    }
-    else
-    {
-        ASSERT_TRUE(m_usersettingsplugin != nullptr);
-        if (m_usersettingsplugin)
-        {
-            status = m_usersettingsplugin->SetContentPin("123456");
-            EXPECT_EQ(status, Core::ERROR_NONE);
+    ASSERT_EQ(CreateUserSettingInterfaceObjectUsingComRPCConnection(), Core::ERROR_NONE);
+    ASSERT_TRUE(m_usersettingsplugin != nullptr);
 
-            status = m_usersettingsplugin->GetContentPin(contentPin);
-            EXPECT_EQ(status, Core::ERROR_NONE);
-            EXPECT_EQ(contentPin, "123456");
+    status = m_usersettingsplugin->SetContentPin("123456");
+    EXPECT_EQ(status, Core::ERROR_NONE);
 
-            status = m_usersettingsplugin->SetContentPin("1234");
-            EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
+    status = m_usersettingsplugin->GetContentPin(contentPin);
+    EXPECT_EQ(status, Core::ERROR_NONE);
+    EXPECT_EQ(contentPin, "123456");
 
-            contentPin = "";
-            status = m_usersettingsplugin->GetContentPin(contentPin);
-            EXPECT_EQ(status, Core::ERROR_NONE);
-            EXPECT_EQ(contentPin, "123456");
-        }
-    }
+    status = m_usersettingsplugin->SetContentPin("1234");
+    EXPECT_EQ(status, Core::ERROR_INVALID_PARAMETER);
+
+    contentPin = "";
+    status = m_usersettingsplugin->GetContentPin(contentPin);
+    EXPECT_EQ(status, Core::ERROR_NONE);
+    EXPECT_EQ(contentPin, "123456");
 }
 
 /* Activating UserSettings and Persistent store plugins and UserSettings namespace has no entries in db.
@@ -3636,4 +3628,3 @@ TEST_F(UserSettingTest, PersistentstoreIsNotActivatedWhileUserSettingsActivating
         }
     }
 }
-
