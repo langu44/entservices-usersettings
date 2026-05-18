@@ -2120,7 +2120,7 @@ TEST_F(UserSettingTest, onContentPinChangedEvent)
 
 }
 
-TEST_F(UserSettingTest, setContentPinRejectsFourDigitPinComRpc)
+TEST_F(UserSettingTest, setContentPinValidatesInputFormatComRpc)
 {
     uint32_t status = Core::ERROR_GENERAL;
     string contentPin = "";
